@@ -5,7 +5,7 @@ WITH AT_FIRST AS(
       Account_Type, 
      ACCOUNT_OPEN_DT,
     DENSE_RANK() OVER (ORDER BY ACCOUNT_OPEN_DT) AS rank
-    FROM PROD_TAB.CORE_AGREEMENT_EOM
+    FROM Customer_Data_TBL
    WHERE  Customer_Id='000005' --- and Account_type='CA'
  )
  SELECT 
@@ -22,23 +22,23 @@ WITH HIGHEST_BALANCE AS(
 
   SELECT TOP 10
     Customer_Id,
-    Today_Date,
-    SUM(Accounting_Bal) AS Accounting_Bal,
-    CURRENCY_CD,
-    DENSE_RANK() OVER (ORDER BY SUM(Accounting_Bal) DESC) as ranking
-  FROM PROD_STG_CORE.CBK_ECL_AGREEMENT_EOM 
-  WHERE  CURRENCY_CD = '840' AND 
-         Accounting_Bal>0
+    Date,
+    SUM(Balance) AS Balance,
+    CURRENCY,
+    DENSE_RANK() OVER (ORDER BY SUM(Balance) DESC) as ranking
+  FROM Customer_Data_TBL
+  WHERE  CURRENCY = '840' AND 
+         Balance>0
   GROUP BY 
-    Customer_Id,Today_Date,CURRENCY_CD
+    Customer_Id,Date,CURRENCY
 
-  ORDER BY SUM(Accounting_Bal) DESC
+  ORDER BY SUM(Balance) DESC
 )
 SELECT 
   Customer_Id,
-  Today_Date,
-  Accounting_Bal,
-  CURRENCY_CD
+  Date,
+  Balance,
+  CURRENCY
 FROM HIGHEST_BALANCE
 WHERE ranking IN (1,2,3)
 
@@ -46,35 +46,35 @@ WHERE ranking IN (1,2,3)
 ---Finding dupilcate customers
 SELECT 
   Customer_Id,
-  Today_Date,
-  CURRENCY_CD,
+  Date,
+  CURRENCY,
   ACCOUNT_TYPE,
-  FORMAT(Accounting_Bal,'N') Accounting_Bal,
+  FORMAT(Balance,'N') Balance,
   COUNT(*) AS number_of_rows
-FROM PROD_STG_CORE.CBK_ECL_AGREEMENT_EOM
-where Accounting_Bal <> 0 
+FROM Customer_Data_TBL
+where FORMAT(Balance,'N') <> 0 
 GROUP BY   
   Customer_Id,
-  Today_Date,
-  CURRENCY_CD,
+  Date,
+  CURRENCY,
   ACCOUNT_TYPE,
-  FORMAT(Accounting_Bal,'N') 
+  FORMAT(Balance,'N') 
 HAVING COUNT(*) > 1
 order by Customer_Id
 
  
 ---Customer Running Total
-SELECT x.Customer_Id, sum(x.Event_Amount), x.Event_Currency_Cd, x.Event_Posted_Date,
-        ( SELECT    SUM(y.Event_Amount)
-          FROM     prod_stg_core.MIS_EVENT_MONTH y
-          WHERE    Customer_Id='88700' AND event_posted_date between '2024-05-31' and '2024-06-30' and Event_Currency_Cd='840' and
+SELECT x.Customer_Id, sum(x.Amount), x.Currency_Cd, x.Event_Date,
+        ( SELECT    SUM(y.Amount)
+          FROM     Customer_Transaction_TBL y
+          WHERE    Customer_Id='6677' AND Event_Date between '2024-05-31' and '2024-06-30' and Currency_Cd='840' and
     y.Customer_Id = x.Customer_Id
-                    AND y.Event_Posted_Date <= x.Event_Posted_Date
+                    AND y.Event_Date <= x.Event_Date
   
         ) AS RunningTotal
-FROM   prod_stg_core.MIS_EVENT_MONTH as x
-WHERE Customer_Id='088700' AND event_posted_date between '2024-05-31' and '2024-06-30' and Event_Currency_Cd='840'
-group by x.Customer_Id, x.Event_Currency_Cd, x.Event_Posted_Date
-ORDER BY x.Event_Posted_Date;
+FROM   Customer_Transaction_TBL as x
+WHERE Customer_Id='6677' AND Event_Date between '2024-05-31' and '2024-06-30' and Currency_Cd='840'
+group by x.Customer_Id, x.Currency_Cd, x.Event_Date
+ORDER BY x.Event_Date;
 
 ```
